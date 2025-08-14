@@ -27,16 +27,27 @@ if prompt := st.chat_input("何か質問してください..."):
 
     # AIに応答を生成してもらう部分です
     with st.chat_message("assistant"):
-        # プロンプト（指示）をOpenAIのモデルに送ります
-        stream = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": m["role"], "content": m["content"]}
-                for m in st.session_state.messages
-            ],
-            stream=True, # AIが文章を生成するのをリアルタイムで表示するための設定です
-        )
-        # AIからの応答を少しずつ表示します
-        response = st.write_stream(stream)
-    # AIの応答を履歴に追加します
-    st.session_state.messages.append({"role": "assistant", "content": response})
+        try:
+            # プロンプト（指示）をOpenAIのモデルに送ります
+            stream = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": m["role"], "content": m["content"]}
+                    for m in st.session_state.messages
+                ],
+                stream=True, # AIが文章を生成するのをリアルタイムで表示するための設定です
+            )
+            # AIからの応答を少しずつ表示します
+            response = st.write_stream(stream)
+            # AIの応答を履歴に追加します
+            st.session_state.messages.append({"role": "assistant", "content": response})
+        except Exception as e:
+            # エラーが発生した場合の処理
+            if "insufficient_quota" in str(e) or "rate_limit" in str(e).lower():
+                error_message = "申し訳ございません。OpenAI APIのクォータが不足しています。料金プランと請求詳細をご確認ください。"
+            else:
+                error_message = f"エラーが発生しました: {str(e)}"
+            
+            st.error(error_message)
+            # エラーメッセージを履歴に追加
+            st.session_state.messages.append({"role": "assistant", "content": error_message})
